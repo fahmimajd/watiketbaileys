@@ -216,6 +216,7 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           include: ["contact", { model: Message, as: "quotedMsg", include: ["contact"] }]
         });
         if (!messageToUpdate) continue;
+        if (!messageToUpdate.fromMe) continue;
         let ack = messageToUpdate.ack;
         const t: string | undefined = u.update?.type || u.type;
         if (t === "delivery") ack = Math.max(ack, 2);
@@ -225,6 +226,38 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         io.to(messageToUpdate.ticketId.toString()).emit("appMessage", { action: "update", message: messageToUpdate });
       } catch (err) {
         logger.error(`Baileys ack update error: ${err}`);
+      }
+    }
+  });
+
+  // Update ack via generic message status updates
+  sock.ev.on("messages.update", async (updates: any[]) => {
+    const io = getIO();
+    for (const u of updates) {
+      try {
+        const id: string | undefined = u.key?.id;
+        const status: number | undefined = (u.update as any)?.status;
+        if (!id || status === undefined) continue;
+        const messageToUpdate = await Message.findByPk(id, {
+          include: [
+            "contact",
+            { model: Message, as: "quotedMsg", include: ["contact"] }
+          ]
+        });
+        if (!messageToUpdate) continue;
+        if (!messageToUpdate.fromMe) continue;
+
+        const capped = Math.min(status, 2);
+        const nextAck = Math.max(messageToUpdate.ack, capped);
+        if (nextAck !== messageToUpdate.ack) {
+          await messageToUpdate.update({ ack: nextAck });
+          io.to(messageToUpdate.ticketId.toString()).emit("appMessage", {
+            action: "update",
+            message: messageToUpdate
+          });
+        }
+      } catch (err) {
+        logger.error(`Baileys messages.update ack error: ${err}`);
       }
     }
   });
