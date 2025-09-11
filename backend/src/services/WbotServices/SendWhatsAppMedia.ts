@@ -1,5 +1,4 @@
 import fs from "fs";
-import { MessageMedia, Message as WbotMessage, MessageSendOptions } from "whatsapp-web.js";
 import AppError from "../../errors/AppError";
 import GetTicketWbot from "../../helpers/GetTicketWbot";
 import Ticket from "../../models/Ticket";
@@ -16,35 +15,34 @@ const SendWhatsAppMedia = async ({
   media,
   ticket,
   body
-}: Request): Promise<WbotMessage> => {
+}: Request): Promise<any> => {
   try {
     const wbot = await GetTicketWbot(ticket);
-    const hasBody = body
-      ? formatBody(body as string, ticket.contact)
-      : undefined;
+    const hasBody = body ? formatBody(body as string, ticket.contact) : undefined;
+    const jid = `${ticket.contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
 
-    const newMedia = MessageMedia.fromFilePath(media.path);
-    
-    let mediaOptions:MessageSendOptions = {
-        caption: hasBody,
-        sendAudioAsVoice: true
-    };
+    const data = fs.readFileSync(media.path);
+    const mimetype = media.mimetype;
+    const filename = media.originalname || media.filename;
 
-    if (newMedia.mimetype.startsWith('image/') && ! /^.*\.(jpe?g|png|gif)?$/i.exec(media.filename)) {
-       mediaOptions['sendMediaAsDocument'] = true;
+    let content: any = {};
+    if (mimetype.startsWith("image/")) {
+      content = { image: data, caption: hasBody };
+    } else if (mimetype.startsWith("video/")) {
+      content = { video: data, caption: hasBody };
+    } else if (mimetype.startsWith("audio/")) {
+      content = { audio: data, mimetype, ptt: true };
+    } else {
+      content = { document: data, mimetype, fileName: filename, caption: hasBody };
     }
-    
-    const sentMessage = await wbot.sendMessage(
-      `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
-      newMedia,
-      mediaOptions
-    );
+
+    const sentMessage = await (wbot as any).sendMessage(jid, content);
 
     await ticket.update({ lastMessage: body || media.filename });
 
     fs.unlinkSync(media.path);
 
-    return sentMessage;
+    return sentMessage as any;
   } catch (err) {
     console.log(err);
     throw new AppError("ERR_SENDING_WAPP_MSG");

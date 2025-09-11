@@ -1,9 +1,9 @@
-import { Client as Session } from "whatsapp-web.js";
 import { getWbot } from "../libs/wbot";
 import GetDefaultWhatsApp from "./GetDefaultWhatsApp";
 import Ticket from "../models/Ticket";
 
-const GetTicketWbot = async (ticket: Ticket): Promise<Session> => {
+// Return type is any to support both whatsapp-web.js Client and Baileys WASocket
+const GetTicketWbot = async (ticket: Ticket): Promise<any> => {
   if (!ticket.whatsappId) {
     const defaultWhatsapp = await GetDefaultWhatsApp(ticket.user.id);
 

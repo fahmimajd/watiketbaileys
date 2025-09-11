@@ -1,5 +1,36 @@
-.docker/data/
-ssl/
+# General
+node_modules/
+dist/
+build/
+coverage/
+.cache/
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Env files
 .env
-.wwebjs_auth
-.idea
+.env.*
+!.env.example
+
+# SQLite or local DB files (if any)
+*.sqlite
+*.sqlite-journal
+
+# Backend
+backend/.env
+backend/dist/
+backend/node_modules/
+backend/public/
+backend/.baileys-*/
+
+# Frontend
+frontend/.env
+frontend/dist/
+frontend/build/
+frontend/node_modules/
+
+# Docker/containers
+.docker/
+.tmp/

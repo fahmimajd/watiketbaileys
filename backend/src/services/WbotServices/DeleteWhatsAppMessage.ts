@@ -1,7 +1,7 @@
 import AppError from "../../errors/AppError";
-import GetWbotMessage from "../../helpers/GetWbotMessage";
 import Message from "../../models/Message";
 import Ticket from "../../models/Ticket";
+import GetTicketWbot from "../../helpers/GetTicketWbot";
 
 const DeleteWhatsAppMessage = async (messageId: string): Promise<Message> => {
   const message = await Message.findByPk(messageId, {
@@ -20,10 +20,10 @@ const DeleteWhatsAppMessage = async (messageId: string): Promise<Message> => {
 
   const { ticket } = message;
 
-  const messageToDelete = await GetWbotMessage(ticket, messageId);
-
+  const wbot: any = await GetTicketWbot(ticket);
+  const jid = `${ticket.contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
   try {
-    await messageToDelete.delete(true);
+    await wbot.sendMessage(jid, { delete: { remoteJid: jid, id: messageId, fromMe: message.fromMe } });
   } catch (err) {
     throw new AppError("ERR_DELETE_WAPP_MSG");
   }
