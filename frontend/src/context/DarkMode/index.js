@@ -17,6 +17,15 @@ export const ThemeProvider = ({ children }) => {
       createMuiTheme({
         palette: {
           type: darkMode ? "dark" : "light",
+          primary: { main: "#2576d2" },
+          ...(darkMode
+            ? {
+                text: {
+                  primary: "#00BFFF", // bright blue in dark mode
+                  secondary: "#80D8FF",
+                },
+              }
+            : {}),
         },
       }),
     [darkMode]

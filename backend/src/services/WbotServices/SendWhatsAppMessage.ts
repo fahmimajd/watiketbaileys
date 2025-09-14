@@ -25,7 +25,24 @@ const SendWhatsAppMessage = async ({
     const text = formatBody(body, ticket.contact);
     let quoted: any = undefined;
     if (quotedMsg) {
-      quoted = { key: { remoteJid: jid, id: quotedMsg.id, fromMe: quotedMsg.fromMe } };
+      let fullQuoted = quotedMsg;
+      if (!(fullQuoted as any).contact) {
+        const found = await Message.findByPk(quotedMsg.id, { include: ["contact"] });
+        if (found) fullQuoted = found as Message;
+      }
+
+      const participant = ticket.isGroup && !fullQuoted.fromMe && (fullQuoted as any).contact
+        ? `${(fullQuoted as any).contact.number}@s.whatsapp.net`
+        : undefined;
+
+      const quotedContent = fullQuoted.mediaType && fullQuoted.mediaType !== "chat"
+        ? { extendedTextMessage: { text: fullQuoted.body || "" } }
+        : { conversation: fullQuoted.body || "" };
+
+      quoted = {
+        key: { remoteJid: jid, id: fullQuoted.id, fromMe: fullQuoted.fromMe, participant },
+        message: quotedContent
+      };
     }
     const sentMessage: any = await (wbot as any).sendMessage(jid, { text }, { linkPreview: false, quoted });
 
