@@ -29,6 +29,27 @@ const CreateTicketService = async ({
     queueId = user?.queues.length === 1 ? user.queues[0].id : undefined;
   }
 
+  const lastTicket = await Ticket.findOne({
+    where: { contactId, whatsappId: defaultWhatsapp.id },
+    order: [["updatedAt", "DESC"]]
+  });
+
+  if (lastTicket && lastTicket.status === "closed") {
+    await lastTicket.update({
+      status,
+      userId,
+      queueId: queueId ?? lastTicket.queueId,
+      isGroup,
+      unreadMessages: 0
+    });
+
+    const reopened = await Ticket.findByPk(lastTicket.id, { include: ["contact"] });
+    if (!reopened) {
+      throw new AppError("ERR_CREATING_TICKET");
+    }
+    return reopened;
+  }
+
   const { id }: Ticket = await defaultWhatsapp.$create("ticket", {
     contactId,
     status,

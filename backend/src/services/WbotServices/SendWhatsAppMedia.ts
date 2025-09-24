@@ -19,7 +19,11 @@ const SendWhatsAppMedia = async ({
   try {
     const wbot = await GetTicketWbot(ticket);
     const hasBody = body ? formatBody(body as string, ticket.contact) : undefined;
-    const jid = `${ticket.contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+    const isGroupChat = ticket.isGroup || ticket.contact?.isGroup;
+    const contactNumber = ticket.contact.number;
+    const jid = contactNumber.includes("@")
+      ? contactNumber
+      : `${contactNumber}@${isGroupChat ? "g.us" : "s.whatsapp.net"}`;
 
     const data = fs.readFileSync(media.path);
     const mimetype = media.mimetype;

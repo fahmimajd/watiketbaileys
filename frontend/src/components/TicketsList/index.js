@@ -79,9 +79,6 @@ const reducer = (state, action) => {
 			const ticketIndex = state.findIndex(t => t.id === ticket.id);
 			if (ticketIndex !== -1) {
 				state[ticketIndex] = ticket;
-				if (ticket.unreadMessages > 0) {
-					state.unshift(state.splice(ticketIndex, 1)[0]);
-				}
 			} else {
 				state.push(ticket);
 			}
@@ -120,7 +117,6 @@ const reducer = (state, action) => {
 		const ticketIndex = state.findIndex(t => t.id === ticket.id);
 		if (ticketIndex !== -1) {
 			state[ticketIndex] = ticket;
-			state.unshift(state.splice(ticketIndex, 1)[0]);
 		} else {
 			state.unshift(ticket);
 		}

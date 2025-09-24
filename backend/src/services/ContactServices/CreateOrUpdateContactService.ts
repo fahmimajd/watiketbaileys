@@ -31,12 +31,26 @@ const CreateOrUpdateContactService = async ({
   contact = await Contact.findOne({ where: { number } });
 
   if (contact) {
-    contact.update({ profilePicUrl });
+    const updates: Record<string, unknown> = {};
+    if (typeof profilePicUrl !== "undefined" && profilePicUrl !== contact.profilePicUrl) {
+      updates.profilePicUrl = profilePicUrl;
+    }
+    if (isGroup && name && name !== contact.name) {
+      updates.name = name;
+    }
+    if (contact.isGroup !== isGroup) {
+      updates.isGroup = isGroup;
+    }
 
-    io.emit("contact", {
-      action: "update",
-      contact
-    });
+    if (Object.keys(updates).length > 0) {
+      await contact.update(updates);
+      await contact.reload();
+
+      io.emit("contact", {
+        action: "update",
+        contact
+      });
+    }
   } else {
     contact = await Contact.create({
       name,

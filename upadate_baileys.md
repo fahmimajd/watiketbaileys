@@ -111,3 +111,4 @@ await sock.sendMessage(jid, { text }, { quoted })
 // media: await sock.sendMessage(jid, { image|video|audio|document: buffer/stream, caption, mimetype, fileName })
 ```
 
+npx sequelize db:seed --seed 20250911000100-add-out-of-hours-settings.js

@@ -2,7 +2,7 @@ import { join } from "path";
 import { promisify } from "util";
 import { writeFile } from "fs";
 import * as Sentry from "@sentry/node";
-import { WASocket, downloadMediaMessage, proto } from "@whiskeysockets/baileys";
+import type { WASocket, proto } from "@whiskeysockets/baileys";
 import { Op } from "sequelize";
 
 import Contact from "../../models/Contact";
@@ -15,9 +15,11 @@ import FindOrCreateTicketService from "../TicketServices/FindOrCreateTicketServi
 import CreateMessageService from "../MessageServices/CreateMessageService";
 import { logger } from "../../utils/logger";
 import ShowWhatsAppService from "../WhatsappService/ShowWhatsAppService";
+import Setting from "../../models/Setting";
 import UpdateTicketService from "../TicketServices/UpdateTicketService";
 import formatBody from "../../helpers/Mustache";
 import { getIO } from "../../libs/socket";
+import { getBaileysModule } from "../../libs/baileysLoader";
 
 const writeFileAsync = promisify(writeFile);
 
@@ -41,6 +43,7 @@ const saveMediaToDisk = async (
   sock: WASocket,
   m: proto.IWebMessageInfo
 ): Promise<{ filename: string; mimetype: string; mediaType: string } | null> => {
+  const { downloadMediaMessage } = await getBaileysModule();
   const msg = m.message as proto.IMessage | undefined;
   if (!msg) return null;
 
@@ -92,19 +95,40 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         const fromMe = !!m.key.fromMe;
         const participant = (m.key.participant as string) || undefined;
         const isGroup = isFromGroup(remoteJid);
-        const senderJid = isGroup ? participant || remoteJid : remoteJid;
-        if (!senderJid) continue;
+        const remoteNumber = jidToNumber(remoteJid);
+        const pushName = (m.pushName as string | undefined) || undefined;
 
-        const number = jidToNumber(senderJid);
+        // Derive chat display name (prefer group subject or push name)
+        let chatDisplayName = pushName || remoteNumber;
+        if (isGroup) {
+          try {
+            const metadata = await sock.groupMetadata(remoteJid);
+            if (metadata?.subject) {
+              chatDisplayName = metadata.subject;
+            }
+          } catch (err) {
+            logger.warn({ err }, `Failed to load group metadata for ${remoteJid}`);
+          }
+        }
 
-        // Create or update contact
-        const contactData = {
-          name: number,
-          number,
+        const chatContact = await CreateOrUpdateContactService({
+          name: chatDisplayName,
+          number: remoteNumber,
           profilePicUrl: undefined,
           isGroup
-        } as any;
-        const contact = await CreateOrUpdateContactService(contactData);
+        } as any);
+
+        let participantContact = chatContact;
+        if (isGroup && participant) {
+          const participantNumber = jidToNumber(participant);
+          const participantName = pushName || participantNumber;
+          participantContact = await CreateOrUpdateContactService({
+            name: participantName,
+            number: participantNumber,
+            profilePicUrl: undefined,
+            isGroup: false
+          } as any);
+        }
 
         // Find or create ticket with fromMe guard
         let ticket: Ticket | null = null;
@@ -112,7 +136,7 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           ticket = await Ticket.findOne({
             where: {
               status: { [Op.or]: ["open", "pending"] },
-              contactId: contact.id,
+              contactId: chatContact.id,
               whatsappId: whatsapp.id
             },
             order: [["updatedAt", "DESC"]]
@@ -122,8 +146,34 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           }
         } else {
           const unread = 1;
-          ticket = await FindOrCreateTicketService(contact, whatsapp.id, unread, undefined);
+          ticket = await FindOrCreateTicketService(
+            participantContact,
+            whatsapp.id,
+            unread,
+            isGroup ? chatContact : undefined
+          );
         }
+
+        // Ensure ticket is non-null for TypeScript safety
+        if (!ticket) {
+          continue;
+        }
+
+        if (isGroup) {
+          const updates: Record<string, unknown> = {};
+          if (!ticket.isGroup) {
+            updates.isGroup = true;
+          }
+          if (ticket.contactId !== chatContact.id) {
+            updates.contactId = chatContact.id;
+          }
+          if (Object.keys(updates).length > 0) {
+            await ticket.update(updates);
+            await ticket.reload();
+          }
+        }
+
+        const ticketId = ticket.id;
 
         // Determine message content
         const text = getMsgText(m) || "";
@@ -148,7 +198,7 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         const messageData: any = {
           id: m.key.id,
           ticketId: ticket.id,
-          contactId: fromMe ? undefined : contact.id,
+          contactId: fromMe ? undefined : participantContact.id,
           body: mediaInfo ? mediaInfo.filename : text,
           fromMe,
           read: fromMe,
@@ -160,22 +210,73 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         await ticket.update({ lastMessage: messageData.body });
         await CreateMessageService({ messageData });
 
-        // Auto-greeting only on first inbound message of a ticket (new or reopened), delayed by 10s
+        // Auto-greeting/OOH only on first inbound message of a ticket (new), delayed by 10s
         try {
-          const totalMsgs = await Message.count({ where: { ticketId: ticket.id } });
-          if (!fromMe && !isGroup && totalMsgs === 1) {
+          const totalMsgs = await Message.count({ where: { ticketId } });
+          const isFirstInbound = !fromMe && !isGroup && totalMsgs === 1;
+          if (!isFirstInbound) {
+            logger.info(`OOH: skip precheck (fromMe=${fromMe} isGroup=${isGroup} totalMsgs=${totalMsgs}) for ticket ${ticketId}`);
+          }
+          if (isFirstInbound) {
             const delay = Number(process.env.GREETING_DELAY_MS) || 10000;
             setTimeout(async () => {
               try {
                 const detailedWhats = await ShowWhatsAppService(whatsapp.id);
+                // Out-of-hours auto reply check
+                const keys = [
+                  "outOfHours",
+                  "outOfHoursMessage",
+                  "businessHoursStart",
+                  "businessHoursEnd",
+                  "businessDays",
+                  "businessTzOffsetMin"
+                ];
+                const all = await Setting.findAll({ where: { key: { [Op.in]: keys } } });
+                const get = (k: string) => (all.find(s => s.key === k)?.value || "");
+                const enabled = get("outOfHours") === "enabled";
+                const message = get("outOfHoursMessage");
+                const start = get("businessHoursStart") || "08:00";
+                const end = get("businessHoursEnd") || "17:00";
+                const days = (get("businessDays") || "1,2,3,4,5").split(",").map(x => parseInt(x.trim(), 10));
+                const tzOffsetMin = parseInt(get("businessTzOffsetMin") || "0", 10);
+                const normalizedTzOffset = isNaN(tzOffsetMin) ? 0 : tzOffsetMin;
+                const serverOffsetMin = new Date().getTimezoneOffset();
+                const totalOffsetMin = normalizedTzOffset + serverOffsetMin;
+                const now = new Date(Date.now() + totalOffsetMin * 60000);
+                const day = now.getDay();
+                const [sh, sm] = start.split(":").map(Number);
+                const [eh, em] = end.split(":").map(Number);
+                const mins = now.getHours() * 60 + now.getMinutes();
+                const sMin = sh * 60 + sm;
+                const eMin = eh * 60 + em;
+                const inBusiness = days.includes(day) && mins >= sMin && mins <= eMin;
+
+                logger.info(`OOH check: enabled=${enabled} tzOffsetMin=${tzOffsetMin} start=${start} end=${end} days=${days.join(',')} nowLocal=${now.toISOString()} inBusiness=${inBusiness}`);
+
                 const hasQueues = detailedWhats.queues && detailedWhats.queues.length >= 1;
+
+                let assignedQueue = undefined;
+
+                if (hasQueues && detailedWhats.queues.length === 1) {
+                  const singleQueue = detailedWhats.queues[0];
+                  await UpdateTicketService({ ticketData: { queueId: singleQueue.id }, ticketId });
+                  assignedQueue = singleQueue;
+                }
+
+                if (enabled && message && !inBusiness) {
+                  logger.info(`OOH triggered on ticket ${ticketId} for ${remoteJid}`);
+                  await (sock as any).sendMessage(remoteJid, { text: message });
+                  return; // do not send queue greeting if OOH triggered
+                }
+                if (enabled && !message && !inBusiness) {
+                  logger.warn(`OOH enabled but message empty; skipping auto-reply for ${remoteJid}`);
+                }
 
                 if (hasQueues) {
                   if (detailedWhats.queues.length === 1) {
-                    const q = detailedWhats.queues[0];
-                    await UpdateTicketService({ ticketData: { queueId: q.id }, ticketId: ticket.id });
-                    if (q.greetingMessage) {
-                      const bodyText = formatBody(`\u200e${q.greetingMessage}`, contact as any);
+                    const greetingSource = assignedQueue || detailedWhats.queues[0];
+                    if (greetingSource.greetingMessage) {
+                      const bodyText = formatBody(`\u200e${greetingSource.greetingMessage}`, chatContact as any);
                       await (sock as any).sendMessage(remoteJid, { text: bodyText });
                     }
                   } else {
@@ -184,12 +285,12 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
                       options += `*${idx + 1}* - ${q.name}\n`;
                     });
                     const gm = detailedWhats.greetingMessage || "";
-                    const bodyText = formatBody(`\u200e${gm}\n${options}`, contact as any);
+                    const bodyText = formatBody(`\u200e${gm}\n${options}`, chatContact as any);
                     await (sock as any).sendMessage(remoteJid, { text: bodyText });
                   }
                 } else if (detailedWhats.greetingMessage) {
                   // Fallback: send WhatsApp-level greeting when no queues configured
-                  const bodyText = formatBody(`\u200e${detailedWhats.greetingMessage}`, contact as any);
+                  const bodyText = formatBody(`\u200e${detailedWhats.greetingMessage}`, chatContact as any);
                   await (sock as any).sendMessage(remoteJid, { text: bodyText });
                 }
               } catch (e) {

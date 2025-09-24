@@ -57,11 +57,11 @@ const UpdateTicketService = async ({
     });
   }
 
-  await ticket.reload();
+  const updatedTicket = await ShowTicketService(ticket.id);
 
   const io = getIO();
 
-  if (ticket.status !== oldStatus || ticket.user?.id !== oldUserId) {
+  if (updatedTicket.status !== oldStatus || updatedTicket.user?.id !== oldUserId) {
     io.to(oldStatus).emit("ticket", {
       action: "delete",
       ticketId: ticket.id
@@ -70,15 +70,15 @@ const UpdateTicketService = async ({
 
 
 
-  io.to(ticket.status)
+  io.to(updatedTicket.status)
     .to("notification")
     .to(ticketId.toString())
     .emit("ticket", {
       action: "update",
-      ticket
+      ticket: updatedTicket
     });
 
-  return { ticket, oldStatus, oldUserId };
+  return { ticket: updatedTicket, oldStatus, oldUserId };
 };
 
 export default UpdateTicketService;

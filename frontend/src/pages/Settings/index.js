@@ -88,9 +88,9 @@ const Settings = () => {
 	};
 
 	const getSettingValue = key => {
-		const { value } = settings.find(s => s.key === key);
-		return value;
-	};
+    const setting = settings.find(s => s.key === key);
+    return setting ? setting.value : "";
+  };
 
 	return (
 		<div className={classes.root}>
@@ -133,6 +133,90 @@ const Settings = () => {
 						variant="outlined"
 						fullWidth
 						value={settings && settings.length > 0 && getSettingValue("userApiToken")}
+					/>
+				</Paper>
+
+				{/* Out-of-hours auto-reply settings */}
+				<Paper className={classes.paper}>
+					<Typography variant="body1">Out-of-hours Auto Reply</Typography>
+					<Select
+						margin="dense"
+						variant="outlined"
+						native
+						id="outofhours-setting"
+						name="outOfHours"
+						value={settings && settings.length > 0 && getSettingValue("outOfHours")}
+						className={classes.settingOption}
+						onChange={handleChangeSetting}
+					>
+						<option value="enabled">Enabled</option>
+						<option value="disabled">Disabled</option>
+					</Select>
+				</Paper>
+
+				<Paper className={classes.paper}>
+					<TextField
+						id="outofhours-message"
+						label="Out-of-hours Message"
+						name="outOfHoursMessage"
+						margin="dense"
+						variant="outlined"
+						fullWidth
+						multiline
+						rows={3}
+						value={settings && settings.length > 0 && getSettingValue("outOfHoursMessage")}
+						onChange={handleChangeSetting}
+					/>
+				</Paper>
+
+				<Paper className={classes.paper}>
+					<TextField
+						id="business-start"
+						label="Business Hours Start (HH:mm)"
+						name="businessHoursStart"
+						margin="dense"
+						variant="outlined"
+						className={classes.margin}
+						value={settings && settings.length > 0 && getSettingValue("businessHoursStart")}
+						onChange={handleChangeSetting}
+					/>
+					<TextField
+						id="business-end"
+						label="Business Hours End (HH:mm)"
+						name="businessHoursEnd"
+						margin="dense"
+						variant="outlined"
+						className={classes.margin}
+						value={settings && settings.length > 0 && getSettingValue("businessHoursEnd")}
+						onChange={handleChangeSetting}
+					/>
+				</Paper>
+
+				<Paper className={classes.paper}>
+					<TextField
+						id="business-days"
+						label="Business Days (0=Sun,..,6=Sat)"
+						name="businessDays"
+						margin="dense"
+						variant="outlined"
+						fullWidth
+						helperText="Comma-separated, e.g. 1,2,3,4,5 for Mon–Fri"
+						value={settings && settings.length > 0 && getSettingValue("businessDays")}
+						onChange={handleChangeSetting}
+					/>
+				</Paper>
+
+				<Paper className={classes.paper}>
+					<TextField
+						id="business-tz"
+						label="Business TZ Offset (minutes)"
+						name="businessTzOffsetMin"
+						margin="dense"
+						variant="outlined"
+						fullWidth
+						helperText="e.g., 420 for UTC+7; -60 for UTC-1"
+						value={settings && settings.length > 0 && getSettingValue("businessTzOffsetMin")}
+						onChange={handleChangeSetting}
 					/>
 				</Paper>
 

@@ -5,12 +5,9 @@ const __nodeCrypto = require("crypto");
 if (!(global as any).crypto && __nodeCrypto?.webcrypto) {
   (global as any).crypto = __nodeCrypto.webcrypto;
 }
-import makeWASocket, {
-  WASocket,
-  useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion
-} from "@whiskeysockets/baileys";
+import type { WASocket } from "@whiskeysockets/baileys";
+
+import { getBaileysModule } from "./baileysLoader";
 
 import Whatsapp from "../models/Whatsapp";
 import { getIO } from "./socket";
@@ -22,7 +19,19 @@ const sessions = new Map<number, WASocket>();
 
 export type Session = WASocket & { id?: number };
 
+type MakeWASocketFn = typeof import("@whiskeysockets/baileys").makeWASocket;
+
 export const initWbot = async (whatsapp: Whatsapp): Promise<Session> => {
+  const baileys = await getBaileysModule();
+  const makeWASocket =
+    baileys.makeWASocket ||
+    (typeof baileys.default === "function"
+      ? (baileys.default as MakeWASocketFn)
+      : (baileys.default as { makeWASocket?: MakeWASocketFn } | undefined)?.makeWASocket);
+  if (!makeWASocket) {
+    throw new Error("makeWASocket export not found in Baileys module");
+  }
+  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
   const io = getIO();
 
   await whatsapp.update({ status: "OPENING" });

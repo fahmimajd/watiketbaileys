@@ -21,7 +21,11 @@ const DeleteWhatsAppMessage = async (messageId: string): Promise<Message> => {
   const { ticket } = message;
 
   const wbot: any = await GetTicketWbot(ticket);
-  const jid = `${ticket.contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+  const isGroupChat = ticket.isGroup || ticket.contact?.isGroup;
+  const contactNumber = ticket.contact.number;
+  const jid = contactNumber.includes("@")
+    ? contactNumber
+    : `${contactNumber}@${isGroupChat ? "g.us" : "s.whatsapp.net"}`;
   try {
     await wbot.sendMessage(jid, { delete: { remoteJid: jid, id: messageId, fromMe: message.fromMe } });
   } catch (err) {

@@ -35,17 +35,31 @@ const ListTicketsService = async ({
   userId,
   withUnreadMessages
 }: Request): Promise<Response> => {
-  let whereCondition: Filterable["where"] = {
-    [Op.or]: [{ userId }, { status: "pending" }],
-    queueId: { [Op.or]: [queueIds, null] }
-  };
+  const hasQueueFilter = Array.isArray(queueIds) && queueIds.length > 0;
+  const queueCondition = hasQueueFilter
+    ? { [Op.or]: [queueIds, null] }
+    : undefined;
+
+  let whereCondition: Filterable["where"] =
+    showAll === "true"
+      ? {}
+      : {
+          [Op.or]: [{ userId }, { status: "pending" }]
+        };
+
+  if (queueCondition) {
+    whereCondition = {
+      ...whereCondition,
+      queueId: queueCondition
+    };
+  }
   let includeCondition: Includeable[];
 
   includeCondition = [
     {
       model: Contact,
       as: "contact",
-      attributes: ["id", "name", "number", "profilePicUrl"]
+      attributes: ["id", "name", "number", "profilePicUrl", "isGroup"]
     },
     {
       model: Queue,
@@ -58,10 +72,6 @@ const ListTicketsService = async ({
       attributes: ["name"]
     }
   ];
-
-  if (showAll === "true") {
-    whereCondition = { queueId: { [Op.or]: [queueIds, null] } };
-  }
 
   if (status) {
     whereCondition = {
@@ -124,12 +134,18 @@ const ListTicketsService = async ({
   if (withUnreadMessages === "true") {
     const user = await ShowUserService(userId);
     const userQueueIds = user.queues.map(queue => queue.id);
+    const userQueueCondition = userQueueIds.length
+      ? { [Op.or]: [userQueueIds, null] }
+      : undefined;
 
     whereCondition = {
       [Op.or]: [{ userId }, { status: "pending" }],
-      queueId: { [Op.or]: [userQueueIds, null] },
       unreadMessages: { [Op.gt]: 0 }
     };
+
+    if (userQueueCondition) {
+      whereCondition.queueId = userQueueCondition;
+    }
   }
 
   const limit = 40;
