@@ -112,3 +112,4 @@ await sock.sendMessage(jid, { text }, { quoted })
 ```
 
 npx sequelize db:seed --seed 20250911000100-add-out-of-hours-settings.js
+npx sequelize db:seed --seed 20250911000200-add-ooh-tz-offset.ts
