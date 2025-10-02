@@ -17,7 +17,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.19",
+    "@whiskeysockets/baileys": "^7.0.0-rc.4",
     "@sentry/node": "^5.29.2",
     "@types/lodash": "^4.17.5",
     "@types/pino": "^6.3.4",
@@ -80,5 +80,8 @@
     "ts-jest": "^26.4.1",
     "ts-node-dev": "^1.0.0-pre.63",
     "typescript": "^4.7.4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

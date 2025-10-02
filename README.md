@@ -20,7 +20,7 @@ Platform tiket berbasis WhatsApp yang membantu tim layanan mengelola percakapan 
 - **Database:** MySQL/MariaDB (disarankan ≥ 10.5) atau kompatibel dengan konfigurasi Sequelize.
 
 ## Prasyarat
-- Node.js 18 LTS (minimal 16, tetapi 18+ disarankan untuk kompatibilitas Baileys).
+- Node.js 20 LTS (minimal 20, Baileys 7 membutuhkan Node.js ≥ 20). Repositori menyertakan file `.nvmrc` agar `nvm use` otomatis memilih versi tersebut.
 - npm 8+ atau yarn setara.
 - MySQL/MariaDB dengan akses `utf8mb4`.
 - Git.

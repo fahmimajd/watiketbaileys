@@ -4,6 +4,7 @@ import GetTicketWbot from "../../helpers/GetTicketWbot";
 import Ticket from "../../models/Ticket";
 
 import formatBody from "../../helpers/Mustache";
+import { buildJidFromNumber } from "../../helpers/Jid";
 
 interface Request {
   media: Express.Multer.File;
@@ -21,9 +22,7 @@ const SendWhatsAppMedia = async ({
     const hasBody = body ? formatBody(body as string, ticket.contact) : undefined;
     const isGroupChat = ticket.isGroup || ticket.contact?.isGroup;
     const contactNumber = ticket.contact.number;
-    const jid = contactNumber.includes("@")
-      ? contactNumber
-      : `${contactNumber}@${isGroupChat ? "g.us" : "s.whatsapp.net"}`;
+    const jid = buildJidFromNumber(contactNumber, !!isGroupChat);
 
     const data = fs.readFileSync(media.path);
     const mimetype = media.mimetype;

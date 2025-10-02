@@ -24,6 +24,7 @@ backend/dist/
 backend/node_modules/
 backend/public/
 backend/.baileys-*/
+backend/.baileys/
 
 # Frontend
 frontend/.env

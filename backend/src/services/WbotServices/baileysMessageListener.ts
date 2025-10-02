@@ -20,8 +20,30 @@ import UpdateTicketService from "../TicketServices/UpdateTicketService";
 import formatBody from "../../helpers/Mustache";
 import { getIO } from "../../libs/socket";
 import { getBaileysModule } from "../../libs/baileysLoader";
+import { getJidUser } from "../../helpers/Jid";
 
 const writeFileAsync = promisify(writeFile);
+
+const GROUP_METADATA_TTL_MS = 5 * 60 * 1000;
+const groupMetadataCache = new Map<string, { subject?: string; expiresAt: number }>();
+
+const getGroupSubject = async (sock: WASocket, jid: string): Promise<string | undefined> => {
+  const now = Date.now();
+  const cached = groupMetadataCache.get(jid);
+  if (cached && cached.expiresAt > now) {
+    return cached.subject;
+  }
+
+  try {
+    const metadata = await sock.groupMetadata(jid);
+    const subject = metadata?.subject || undefined;
+    groupMetadataCache.set(jid, { subject, expiresAt: now + GROUP_METADATA_TTL_MS });
+    return subject;
+  } catch (err) {
+    groupMetadataCache.delete(jid);
+    throw err;
+  }
+};
 
 const getMsgText = (m: proto.IWebMessageInfo): string | undefined => {
   const msg = m.message as proto.IMessage | undefined;
@@ -37,7 +59,7 @@ const getMsgText = (m: proto.IWebMessageInfo): string | undefined => {
 
 const isFromGroup = (jid: string): boolean => jid.endsWith("@g.us");
 
-const jidToNumber = (jid: string): string => jid.split("@")[0];
+const jidToNumber = (jid: string): string => getJidUser(jid);
 
 const saveMediaToDisk = async (
   sock: WASocket,
@@ -102,9 +124,9 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         let chatDisplayName = pushName || remoteNumber;
         if (isGroup) {
           try {
-            const metadata = await sock.groupMetadata(remoteJid);
-            if (metadata?.subject) {
-              chatDisplayName = metadata.subject;
+            const subject = await getGroupSubject(sock, remoteJid);
+            if (subject) {
+              chatDisplayName = subject;
             }
           } catch (err) {
             logger.warn({ err }, `Failed to load group metadata for ${remoteJid}`);
@@ -209,6 +231,21 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
 
         await ticket.update({ lastMessage: messageData.body });
         await CreateMessageService({ messageData });
+        const normalizedText = text.trim().toLowerCase();
+        if (!fromMe && normalizedText === "#cek_antrian") {
+          try {
+            const pendingCount = await Ticket.count({
+              where: {
+                status: "pending",
+                whatsappId: whatsapp.id
+              }
+            });
+            const queueReply = `Saat ini terdapat ${pendingCount} antrian yang belum diproses.`;
+            await (sock as any).sendMessage(remoteJid, { text: queueReply });
+          } catch (countErr) {
+            logger.error(`Baileys queue check error: ${countErr}`);
+          }
+        }
 
         // Auto-greeting/OOH only on first inbound message of a ticket (new), delayed by 10s
         try {
@@ -307,6 +344,27 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
       }
     }
   });
+  sock.ev.on("groups.update", async (updates: any[]) => {
+    const now = Date.now();
+    for (const update of updates) {
+      const id = update?.id as string | undefined;
+      if (!id) continue;
+      if (typeof update.subject !== "undefined") {
+        groupMetadataCache.set(id, { subject: update.subject, expiresAt: now + GROUP_METADATA_TTL_MS });
+        try {
+          await CreateOrUpdateContactService({
+            name: update.subject,
+            number: jidToNumber(id),
+            profilePicUrl: undefined,
+            isGroup: true
+          } as any);
+        } catch (err) {
+          logger.warn({ err }, `Failed to sync group contact name for ${id}`);
+        }
+      }
+    }
+  });
+
   sock.ev.on("message-receipt.update", async (updates: any[]) => {
     const io = getIO();
     for (const u of updates) {

@@ -4,6 +4,7 @@ import Message from "../../models/Message";
 import Ticket from "../../models/Ticket";
 
 import formatBody from "../../helpers/Mustache";
+import { buildJidFromNumber } from "../../helpers/Jid";
 
 interface Request {
   body: string;
@@ -22,9 +23,7 @@ const SendWhatsAppMessage = async ({
   try {
     const isGroupChat = ticket.isGroup || ticket.contact?.isGroup;
     const contactNumber = ticket.contact.number;
-    const jid = contactNumber.includes("@")
-      ? contactNumber
-      : `${contactNumber}@${isGroupChat ? "g.us" : "s.whatsapp.net"}`;
+    const jid = buildJidFromNumber(contactNumber, !!isGroupChat);
 
     const text = formatBody(body, ticket.contact);
     let quoted: any = undefined;
@@ -37,7 +36,7 @@ const SendWhatsAppMessage = async ({
 
       const participantContact = (fullQuoted as any).contact;
       const participant = isGroupChat && !fullQuoted.fromMe && participantContact && !participantContact.isGroup
-        ? `${participantContact.number}@s.whatsapp.net`
+        ? buildJidFromNumber(participantContact.number, false)
         : undefined;
 
       const quotedContent = fullQuoted.mediaType && fullQuoted.mediaType !== "chat"
