@@ -199,10 +199,16 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
 
         // Determine message content
         const text = getMsgText(m) || "";
+        const hasText = text.trim().length > 0;
         const mediaInfo = await saveMediaToDisk(sock, m);
-        if (!mediaInfo && !text.trim()) {
+        if (!mediaInfo && !hasText) {
           // ignore empty stubs
           continue;
+        }
+
+        let body = hasText ? text : "";
+        if (!hasText && mediaInfo) {
+          body = mediaInfo.filename;
         }
 
         // Determine quoted message
@@ -221,11 +227,11 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           id: m.key.id,
           ticketId: ticket.id,
           contactId: fromMe ? undefined : participantContact.id,
-          body: mediaInfo ? mediaInfo.filename : text,
+          body,
           fromMe,
           read: fromMe,
           mediaUrl: mediaInfo ? mediaInfo.filename : undefined,
-          mediaType: mediaInfo ? mediaInfo.mediaType : (text ? "chat" : undefined),
+          mediaType: mediaInfo ? mediaInfo.mediaType : (hasText ? "chat" : undefined),
           quotedMsgId
         };
 

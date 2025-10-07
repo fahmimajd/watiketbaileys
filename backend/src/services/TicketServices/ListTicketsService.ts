@@ -81,7 +81,13 @@ const ListTicketsService = async ({
   }
 
   if (searchParam) {
-    const sanitizedSearchParam = searchParam.toLocaleLowerCase().trim();
+    const trimmedSearch = searchParam.trim();
+    const sanitizedLower = trimmedSearch.toLocaleLowerCase();
+    const numericSearch = trimmedSearch.replace(/[^0-9]/g, "");
+
+    const messageFilter = sanitizedLower
+      ? where(fn("LOWER", col("messages.body")), "LIKE", `%${sanitizedLower}%`)
+      : undefined;
 
     includeCondition = [
       ...includeCondition,
@@ -89,38 +95,51 @@ const ListTicketsService = async ({
         model: Message,
         as: "messages",
         attributes: ["id", "body"],
-        where: {
-          body: where(
-            fn("LOWER", col("body")),
-            "LIKE",
-            `%${sanitizedSearchParam}%`
-          )
-        },
+        ...(messageFilter ? { where: { body: messageFilter } } : {}),
         required: false,
         duplicating: false
       }
     ];
 
-    whereCondition = {
-      ...whereCondition,
-      [Op.or]: [
-        {
-          "$contact.name$": where(
-            fn("LOWER", col("contact.name")),
-            "LIKE",
-            `%${sanitizedSearchParam}%`
-          )
-        },
-        { "$contact.number$": { [Op.like]: `%${sanitizedSearchParam}%` } },
-        {
-          "$message.body$": where(
-            fn("LOWER", col("body")),
-            "LIKE",
-            `%${sanitizedSearchParam}%`
-          )
-        }
-      ]
-    };
+    const searchConditions: any[] = [];
+
+    if (sanitizedLower) {
+      searchConditions.push({
+        "$contact.name$": where(
+          fn("LOWER", col("contact.name")),
+          "LIKE",
+          `%${sanitizedLower}%`
+        )
+      });
+
+      searchConditions.push({
+        "$messages.body$": where(
+          fn("LOWER", col("messages.body")),
+          "LIKE",
+          `%${sanitizedLower}%`
+        )
+      });
+    }
+
+    if (numericSearch) {
+      searchConditions.push({
+        "$contact.number$": { [Op.like]: `%${numericSearch}%` }
+      });
+    }
+
+    if (searchConditions.length) {
+      const baseWhere = whereCondition;
+      const hasBaseWhere =
+        baseWhere &&
+        (Object.keys(baseWhere).length > 0 ||
+          Object.getOwnPropertySymbols(baseWhere).length > 0);
+
+      const combinedSearch = { [Op.or]: searchConditions };
+
+      whereCondition = hasBaseWhere
+        ? { [Op.and]: [baseWhere, combinedSearch] }
+        : combinedSearch;
+    }
   }
 
   if (date) {
