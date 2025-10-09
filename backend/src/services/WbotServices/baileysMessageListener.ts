@@ -52,6 +52,7 @@ const getMsgText = (m: proto.IWebMessageInfo): string | undefined => {
   if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text as string;
   if (msg.imageMessage?.caption) return msg.imageMessage.caption as string;
   if (msg.videoMessage?.caption) return msg.videoMessage.caption as string;
+  if (msg.documentMessage?.caption) return msg.documentMessage.caption as string;
   if ((msg.ephemeralMessage?.message as any)?.conversation) return (msg.ephemeralMessage!.message as any).conversation as string;
   if ((msg.viewOnceMessage?.message as any)?.conversation) return (msg.viewOnceMessage!.message as any).conversation as string;
   return undefined;
@@ -64,13 +65,14 @@ const jidToNumber = (jid: string): string => getJidUser(jid);
 const saveMediaToDisk = async (
   sock: WASocket,
   m: proto.IWebMessageInfo
-): Promise<{ filename: string; mimetype: string; mediaType: string } | null> => {
+): Promise<{ filename: string; mimetype: string; mediaType: string; displayName?: string } | null> => {
   const { downloadMediaMessage } = await getBaileysModule();
   const msg = m.message as proto.IMessage | undefined;
   if (!msg) return null;
 
   let mediaType: string | null = null;
   let mimetype: string | undefined;
+  let displayName: string | undefined;
   if (msg.imageMessage) {
     mediaType = "image";
     mimetype = msg.imageMessage.mimetype as string | undefined;
@@ -83,6 +85,7 @@ const saveMediaToDisk = async (
   } else if (msg.documentMessage) {
     mediaType = "document";
     mimetype = msg.documentMessage.mimetype as string | undefined;
+    displayName = msg.documentMessage.fileName as string | undefined;
   }
 
   if (!mediaType) return null;
@@ -99,7 +102,7 @@ const saveMediaToDisk = async (
     const filename = `${random}-${Date.now()}.${ext}`;
     const fullPath = join(__dirname, "..", "..", "..", "public", filename);
     await writeFileAsync(fullPath, buffer as Buffer);
-    return { filename, mimetype: mimetype || "", mediaType };
+    return { filename, mimetype: mimetype || "", mediaType, displayName };
   } catch (err) {
     Sentry.captureException(err);
     logger.error(err);
@@ -208,7 +211,7 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
 
         let body = hasText ? text : "";
         if (!hasText && mediaInfo) {
-          body = mediaInfo.filename;
+          body = mediaInfo.displayName || mediaInfo.filename;
         }
 
         // Determine quoted message
