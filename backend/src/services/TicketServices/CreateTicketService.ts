@@ -5,6 +5,8 @@ import Ticket from "../../models/Ticket";
 import User from "../../models/User";
 import ShowContactService from "../ContactServices/ShowContactService";
 
+const TICKET_REOPEN_WINDOW_MS = Number(process.env.TICKET_REOPEN_WINDOW_MS || 60 * 60 * 1000);
+
 interface Request {
   contactId: number;
   status: string;
@@ -35,19 +37,24 @@ const CreateTicketService = async ({
   });
 
   if (lastTicket && lastTicket.status === "closed") {
-    await lastTicket.update({
-      status,
-      userId,
-      queueId: queueId ?? lastTicket.queueId,
-      isGroup,
-      unreadMessages: 0
-    });
+    const lastUpdateMs = lastTicket.updatedAt.getTime();
+    const elapsedSinceClose = Date.now() - lastUpdateMs;
 
-    const reopened = await Ticket.findByPk(lastTicket.id, { include: ["contact"] });
-    if (!reopened) {
-      throw new AppError("ERR_CREATING_TICKET");
+    if (elapsedSinceClose <= TICKET_REOPEN_WINDOW_MS) {
+      await lastTicket.update({
+        status,
+        userId,
+        queueId: queueId ?? lastTicket.queueId,
+        isGroup,
+        unreadMessages: 0
+      });
+
+      const reopened = await Ticket.findByPk(lastTicket.id, { include: ["contact"] });
+      if (!reopened) {
+        throw new AppError("ERR_CREATING_TICKET");
+      }
+      return reopened;
     }
-    return reopened;
   }
 
   const { id }: Ticket = await defaultWhatsapp.$create("ticket", {

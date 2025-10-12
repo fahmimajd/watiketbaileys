@@ -123,6 +123,15 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         const remoteNumber = jidToNumber(remoteJid);
         const pushName = (m.pushName as string | undefined) || undefined;
 
+        const selfJid =
+          (sock.user?.id as string | undefined) ||
+          ((sock as any).authState?.creds?.me?.id as string | undefined);
+        const selfNumber = selfJid ? jidToNumber(selfJid) : undefined;
+        if (!fromMe && !isGroup && selfNumber && remoteNumber === selfNumber) {
+          logger.info(`Skipping mirrored self-message for ${remoteJid}`);
+          continue;
+        }
+
         // Derive chat display name (prefer group subject or push name)
         let chatDisplayName = pushName || remoteNumber;
         if (isGroup) {
