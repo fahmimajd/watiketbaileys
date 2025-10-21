@@ -5,7 +5,6 @@ import * as Sentry from "@sentry/node";
 import type { WASocket, proto } from "@whiskeysockets/baileys";
 import { Op } from "sequelize";
 
-import Contact from "../../models/Contact";
 import Ticket from "../../models/Ticket";
 import Message from "../../models/Message";
 import Whatsapp from "../../models/Whatsapp";
@@ -145,23 +144,56 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           }
         }
 
-        const chatContact = await CreateOrUpdateContactService({
+        let chatContact = await CreateOrUpdateContactService({
           name: chatDisplayName,
           number: remoteNumber,
           profilePicUrl: undefined,
           isGroup
         } as any);
 
+        if (!chatContact.profilePicUrl) {
+          try {
+            const fetchedChatProfilePicUrl = await (sock as any).profilePictureUrl(remoteJid, "image");
+            if (fetchedChatProfilePicUrl) {
+              chatContact = await CreateOrUpdateContactService({
+                name: chatDisplayName,
+                number: remoteNumber,
+                profilePicUrl: fetchedChatProfilePicUrl,
+                isGroup
+              } as any);
+            }
+          } catch (err) {
+            logger.warn({ err }, `Failed to load profile picture for ${remoteJid}`);
+          }
+        }
+
         let participantContact = chatContact;
         if (isGroup && participant) {
           const participantNumber = jidToNumber(participant);
           const participantName = pushName || participantNumber;
+
           participantContact = await CreateOrUpdateContactService({
             name: participantName,
             number: participantNumber,
             profilePicUrl: undefined,
             isGroup: false
           } as any);
+
+          if (!participantContact.profilePicUrl) {
+            try {
+              const fetchedParticipantProfilePicUrl = await (sock as any).profilePictureUrl(participant, "image");
+              if (fetchedParticipantProfilePicUrl) {
+                participantContact = await CreateOrUpdateContactService({
+                  name: participantName,
+                  number: participantNumber,
+                  profilePicUrl: fetchedParticipantProfilePicUrl,
+                  isGroup: false
+                } as any);
+              }
+            } catch (err) {
+              logger.warn({ err }, `Failed to load participant profile picture for ${participant}`);
+            }
+          }
         }
 
         // Find or create ticket with fromMe guard
