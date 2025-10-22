@@ -103,10 +103,10 @@ const reducer = (state, action) => {
 
 		const ticketIndex = state.findIndex(t => t.id === ticket.id);
 		if (ticketIndex !== -1) {
-			state[ticketIndex] = ticket;
-		} else {
-			state.unshift(ticket);
+			state.splice(ticketIndex, 1);
 		}
+
+		state.unshift(ticket);
 
 		return [...state];
 	}
@@ -116,10 +116,10 @@ const reducer = (state, action) => {
 
 		const ticketIndex = state.findIndex(t => t.id === ticket.id);
 		if (ticketIndex !== -1) {
-			state[ticketIndex] = ticket;
-		} else {
-			state.unshift(ticket);
+			state.splice(ticketIndex, 1);
 		}
+
+		state.unshift(ticket);
 
 		return [...state];
 	}
