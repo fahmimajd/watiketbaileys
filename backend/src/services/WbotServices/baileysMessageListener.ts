@@ -83,6 +83,32 @@ const preferPhoneNumberJid = (jid?: string, alt?: string): string | undefined =>
   return jid || alt;
 };
 
+const GENERIC_PUSHNAME_PREFIXES = [
+  "server",
+  "layanan",
+  "aduan",
+  "customer service",
+  "support",
+  "whatsapp",
+  "notifikasi",
+  "pesan",
+  "pengaduan"
+];
+
+const sanitizePushName = (value?: string): string | undefined => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const normalized = trimmed.toLowerCase();
+  if (/^(\+?\d[\d\s-]{4,})$/.test(trimmed)) {
+    return undefined;
+  }
+  if (GENERIC_PUSHNAME_PREFIXES.some(prefix => normalized.startsWith(prefix))) {
+    return undefined;
+  }
+  return trimmed;
+};
+
 const saveMediaToDisk = async (
   sock: WASocket,
   m: proto.IWebMessageInfo
@@ -144,7 +170,12 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         const remoteJidAlt = (m.key as any).remoteJidAlt as string | undefined;
         const chatContactJid = preferPhoneNumberJid(remoteJid, remoteJidAlt) || remoteJid;
         const remoteNumber = jidToNumber(chatContactJid);
-        const pushName = (m.pushName as string | undefined) || undefined;
+        const rawPushName = typeof m.pushName === "string" ? m.pushName : undefined;
+        const sanitizedPushName = sanitizePushName(rawPushName);
+        const pushNameExtraInfo =
+          rawPushName && rawPushName.trim()
+            ? [{ name: "waPushName", value: rawPushName.trim() }]
+            : [];
 
         const selfJid =
           (sock.user?.id as string | undefined) ||
@@ -158,7 +189,7 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         }
 
         // Derive chat display name (prefer group subject or push name)
-        let chatDisplayName = pushName || remoteNumber;
+        let chatDisplayName = sanitizedPushName || remoteNumber;
         if (isGroup) {
           try {
             const subject = await getGroupSubject(sock, remoteJid);
@@ -174,7 +205,8 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           name: chatDisplayName,
           number: remoteNumber,
           profilePicUrl: undefined,
-          isGroup
+          isGroup,
+          extraInfo: pushNameExtraInfo
         } as any);
 
         if (!chatContact.profilePicUrl) {
@@ -185,7 +217,8 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
                 name: chatDisplayName,
                 number: remoteNumber,
                 profilePicUrl: fetchedChatProfilePicUrl,
-                isGroup
+                isGroup,
+                extraInfo: pushNameExtraInfo
               } as any);
             }
           } catch (err) {
@@ -198,13 +231,18 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
           const participantAlt = (m.key as any).participantAlt as string | undefined;
           const participantContactJid = preferPhoneNumberJid(participant, participantAlt) || participant;
           const participantNumber = jidToNumber(participantContactJid);
-          const participantName = pushName || participantNumber;
+          const participantName = sanitizedPushName || participantNumber;
+          const participantExtraInfo =
+            rawPushName && rawPushName.trim()
+              ? [{ name: "waPushName", value: rawPushName.trim() }]
+              : [];
 
           participantContact = await CreateOrUpdateContactService({
             name: participantName,
             number: participantNumber,
             profilePicUrl: undefined,
-            isGroup: false
+            isGroup: false,
+            extraInfo: participantExtraInfo
           } as any);
 
           if (!participantContact.profilePicUrl) {
@@ -215,7 +253,8 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
                   name: participantName,
                   number: participantNumber,
                   profilePicUrl: fetchedParticipantProfilePicUrl,
-                  isGroup: false
+                  isGroup: false,
+                  extraInfo: participantExtraInfo
                 } as any);
               }
             } catch (err) {
