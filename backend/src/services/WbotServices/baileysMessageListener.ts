@@ -61,6 +61,28 @@ const isFromGroup = (jid: string): boolean => jid.endsWith("@g.us");
 
 const jidToNumber = (jid: string): string => getJidUser(jid);
 
+const getJidDomain = (jid?: string): string => {
+  if (!jid) return "";
+  const atIndex = jid.indexOf("@");
+  return atIndex > -1 ? jid.slice(atIndex + 1) : "";
+};
+
+const isPhoneNumberJid = (jid?: string): boolean => {
+  if (!jid) return false;
+  const domain = getJidDomain(jid);
+  return domain === "s.whatsapp.net" || domain === "c.us" || domain === "hosted";
+};
+
+const preferPhoneNumberJid = (jid?: string, alt?: string): string | undefined => {
+  if (isPhoneNumberJid(jid)) {
+    return jid;
+  }
+  if (isPhoneNumberJid(alt)) {
+    return alt;
+  }
+  return jid || alt;
+};
+
 const saveMediaToDisk = async (
   sock: WASocket,
   m: proto.IWebMessageInfo
@@ -91,7 +113,7 @@ const saveMediaToDisk = async (
 
   try {
     const buffer = await downloadMediaMessage(
-      m,
+      m as any,
       "buffer",
       undefined as any,
       { logger: undefined as any, reuploadRequest: (sock as any).updateMediaMessage }
@@ -119,13 +141,17 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
         const fromMe = !!m.key.fromMe;
         const participant = (m.key.participant as string) || undefined;
         const isGroup = isFromGroup(remoteJid);
-        const remoteNumber = jidToNumber(remoteJid);
+        const remoteJidAlt = (m.key as any).remoteJidAlt as string | undefined;
+        const chatContactJid = preferPhoneNumberJid(remoteJid, remoteJidAlt) || remoteJid;
+        const remoteNumber = jidToNumber(chatContactJid);
         const pushName = (m.pushName as string | undefined) || undefined;
 
         const selfJid =
           (sock.user?.id as string | undefined) ||
           ((sock as any).authState?.creds?.me?.id as string | undefined);
-        const selfNumber = selfJid ? jidToNumber(selfJid) : undefined;
+        const selfLidJid = ((sock as any).authState?.creds?.me?.lid as string | undefined) || undefined;
+        const normalizedSelfJid = preferPhoneNumberJid(selfJid, selfLidJid) || selfJid || selfLidJid;
+        const selfNumber = normalizedSelfJid ? jidToNumber(normalizedSelfJid) : undefined;
         if (!fromMe && !isGroup && selfNumber && remoteNumber === selfNumber) {
           logger.info(`Skipping mirrored self-message for ${remoteJid}`);
           continue;
@@ -169,7 +195,9 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
 
         let participantContact = chatContact;
         if (isGroup && participant) {
-          const participantNumber = jidToNumber(participant);
+          const participantAlt = (m.key as any).participantAlt as string | undefined;
+          const participantContactJid = preferPhoneNumberJid(participant, participantAlt) || participant;
+          const participantNumber = jidToNumber(participantContactJid);
           const participantName = pushName || participantNumber;
 
           participantContact = await CreateOrUpdateContactService({
