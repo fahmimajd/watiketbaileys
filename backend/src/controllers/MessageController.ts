@@ -9,6 +9,7 @@ import ShowTicketService from "../services/TicketServices/ShowTicketService";
 import DeleteWhatsAppMessage from "../services/WbotServices/DeleteWhatsAppMessage";
 import SendWhatsAppMedia from "../services/WbotServices/SendWhatsAppMedia";
 import SendWhatsAppMessage from "../services/WbotServices/SendWhatsAppMessage";
+import { SendReadReceiptService } from "../services/WbotServices/SendReadReceiptService";
 
 type IndexQuery = {
   pageNumber: string;
@@ -72,4 +73,16 @@ export const remove = async (
   });
 
   return res.send();
+};
+
+export const markAsRead = async (req: Request, res: Response): Promise<Response> => {
+  const { ticketId } = req.params;
+  
+  try {
+    await SendReadReceiptService(Number(ticketId));
+    return res.status(200).json({ message: "Messages marked as read" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to mark messages as read" });
+  }
 };

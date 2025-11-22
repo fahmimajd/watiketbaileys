@@ -379,6 +379,21 @@ const MessagesList = ({ ticketId, isGroup }) => {
     };
   }, [ticketId]);
 
+  // Send read receipts when opening a ticket
+  useEffect(() => {
+    const sendReadReceipts = async () => {
+      try {
+        await api.post(`/messages/${ticketId}/read`);
+      } catch (err) {
+        console.error("Failed to send read receipts:", err);
+      }
+    };
+
+    if (ticketId && messagesList.length > 0) {
+      sendReadReceipts();
+    }
+  }, [ticketId, messagesList.length]);
+
   const loadMore = () => {
     setPageNumber((prevPageNumber) => prevPageNumber + 1);
   };

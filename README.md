@@ -164,5 +164,4 @@ Lalu tambahkan volume tersebut ke service backend pada `docker-compose.yaml` jik
 - Proyek ini tidak berafiliasi dengan WhatsApp Inc. atau Meta Platforms.
 - Pastikan untuk mematuhi hukum dan kebijakan privasi setempat saat mengelola data pelanggan.
 
-## Lisensi
-MIT – silakan gunakan dan modifikasi sesuai kebutuhan Anda. Periksa file `LICENSE` untuk detail.
+

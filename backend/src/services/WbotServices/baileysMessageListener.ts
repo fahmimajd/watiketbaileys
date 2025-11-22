@@ -488,18 +488,30 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
       try {
         const id: string | undefined = u.key?.id;
         if (!id) continue;
+        
         const messageToUpdate = await Message.findByPk(id, {
           include: ["contact", { model: Message, as: "quotedMsg", include: ["contact"] }]
         });
+        
         if (!messageToUpdate) continue;
         if (!messageToUpdate.fromMe) continue;
+        
         let ack = messageToUpdate.ack;
         const t: string | undefined = u.update?.type || u.type;
+        
         if (t === "delivery") ack = Math.max(ack, 2);
         if (t === "read") ack = Math.max(ack, 3);
         if (t === "played") ack = Math.max(ack, 4);
-        await messageToUpdate.update({ ack });
-        io.to(messageToUpdate.ticketId.toString()).emit("appMessage", { action: "update", message: messageToUpdate });
+        
+        // Also update the read field for consistency
+        const read = ack >= 3;
+        
+        await messageToUpdate.update({ ack, read });
+        io.to(messageToUpdate.ticketId.toString()).emit("appMessage", { 
+          action: "update", 
+          message: messageToUpdate 
+        });
+        
       } catch (err) {
         logger.error(`Baileys ack update error: ${err}`);
       }
