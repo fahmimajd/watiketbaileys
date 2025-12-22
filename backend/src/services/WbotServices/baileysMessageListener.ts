@@ -223,6 +223,15 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
             }
           } catch (err) {
             logger.warn({ err }, `Failed to load profile picture for ${remoteJid}`);
+            // Use default avatar when profile picture cannot be fetched
+            const defaultAvatarUrl = `${process.env.BACKEND_URL}:${process.env.PROXY_PORT}/public/default-avatar.png`;
+            chatContact = await CreateOrUpdateContactService({
+              name: chatDisplayName,
+              number: remoteNumber,
+              profilePicUrl: defaultAvatarUrl,
+              isGroup,
+              extraInfo: pushNameExtraInfo
+            } as any);
           }
         }
 
@@ -259,6 +268,15 @@ export const wireBaileysMessageListeners = (sock: WASocket, whatsapp: Whatsapp):
               }
             } catch (err) {
               logger.warn({ err }, `Failed to load participant profile picture for ${participant}`);
+              // Use default avatar when profile picture cannot be fetched
+              const defaultAvatarUrl = `${process.env.BACKEND_URL}:${process.env.PROXY_PORT}/public/default-avatar.png`;
+              participantContact = await CreateOrUpdateContactService({
+                name: participantName,
+                number: participantNumber,
+                profilePicUrl: defaultAvatarUrl,
+                isGroup: false,
+                extraInfo: participantExtraInfo
+              } as any);
             }
           }
         }
