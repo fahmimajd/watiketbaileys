@@ -19,6 +19,12 @@ interface OperatorMetric {
 const GetDashboardMetricsService = async (): Promise<{
   operators: OperatorMetric[];
 }> => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
   const users = await User.findAll({
     attributes: ["id", "name", "email", "profile"],
     order: [["name", "ASC"]]
@@ -28,19 +34,19 @@ const GetDashboardMetricsService = async (): Promise<{
 
   for (const user of users) {
     const [openCount, pendingCount, closedCount] = await Promise.all([
-      Ticket.count({ where: { userId: user.id, status: "open" } }),
-      Ticket.count({ where: { userId: user.id, status: "pending" } }),
-      Ticket.count({ where: { userId: user.id, status: "closed" } })
+      Ticket.count({ where: { userId: user.id, status: "open", updatedAt: { [Op.between]: [startOfToday, endOfToday] } } }),
+      Ticket.count({ where: { userId: user.id, status: "pending", updatedAt: { [Op.between]: [startOfToday, endOfToday] } } }),
+      Ticket.count({ where: { userId: user.id, status: "closed", updatedAt: { [Op.between]: [startOfToday, endOfToday] } } })
     ]);
 
     const lastActiveTicket = await Ticket.findOne({
-      where: { userId: user.id },
+      where: { userId: user.id, updatedAt: { [Op.between]: [startOfToday, endOfToday] } },
       attributes: [[fn("MAX", col("updatedAt")), "lastActive"]],
       raw: true
     }) as unknown as Record<string, unknown> | null;
 
     const ticketsForUser = await Ticket.findAll({
-      where: { userId: user.id },
+      where: { userId: user.id, updatedAt: { [Op.between]: [startOfToday, endOfToday] } },
       attributes: ["id"]
     });
 
