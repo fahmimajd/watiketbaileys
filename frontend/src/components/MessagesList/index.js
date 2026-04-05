@@ -42,7 +42,8 @@ const useStyles = makeStyles((theme) => ({
   },
 
   messagesList: {
-    backgroundImage: `url(${whatsBackground})`,
+    backgroundImage: "none",
+    backgroundColor: theme.palette.type === "dark" ? "#0b1120" : "#f8fafc",
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
@@ -80,24 +81,24 @@ const useStyles = makeStyles((theme) => ({
 
     whiteSpace: "pre-wrap",
     backgroundColor: "#ffffff",
-    color: "#303030",
+    color: "#1e293b",
     alignSelf: "flex-start",
     borderTopLeftRadius: 0,
-    borderTopRightRadius: 8,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     paddingLeft: 5,
     paddingRight: 5,
     paddingTop: 5,
     paddingBottom: 0,
-    boxShadow: "0 1px 1px #b3b3b3",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 1px 1px rgba(0,0,0,0.04)",
   },
 
   quotedContainerLeft: {
     margin: "-3px -80px 6px -6px",
     overflow: "hidden",
-    backgroundColor: "#f0f0f0",
-    borderRadius: "7.5px",
+    backgroundColor: "#f1f5f9",
+    borderRadius: "10px",
     display: "flex",
     position: "relative",
   },
@@ -114,7 +115,7 @@ const useStyles = makeStyles((theme) => ({
   quotedSideColorLeft: {
     flex: "none",
     width: "4px",
-    backgroundColor: "#6bcbef",
+    backgroundColor: "#6366f1",
   },
 
   messageRight: {
@@ -133,25 +134,25 @@ const useStyles = makeStyles((theme) => ({
     },
 
     whiteSpace: "pre-wrap",
-    backgroundColor: "#dcf8c6",
-    color: "#303030",
+    backgroundColor: "#6366f1",
+    color: "#ffffff",
     alignSelf: "flex-end",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    borderBottomLeftRadius: 8,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
     borderBottomRightRadius: 0,
     paddingLeft: 5,
     paddingRight: 5,
     paddingTop: 5,
     paddingBottom: 0,
-    boxShadow: "0 1px 1px #b3b3b3",
+    boxShadow: "0 1px 2px rgba(99,102,241,0.2), 0 1px 1px rgba(99,102,241,0.1)",
   },
 
   quotedContainerRight: {
     margin: "-3px -80px 6px -6px",
     overflowY: "hidden",
-    backgroundColor: "#cfe9ba",
-    borderRadius: "7.5px",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: "10px",
     display: "flex",
     position: "relative",
   },
@@ -161,12 +162,13 @@ const useStyles = makeStyles((theme) => ({
     maxWidth: 300,
     height: "auto",
     whiteSpace: "pre-wrap",
+    color: "#ffffff",
   },
 
   quotedSideColorRight: {
     flex: "none",
     width: "4px",
-    backgroundColor: "#35cd96",
+    backgroundColor: "#a5b4fc",
   },
 
   messageActionsButton: {
@@ -181,7 +183,7 @@ const useStyles = makeStyles((theme) => ({
 
   messageContactName: {
     display: "flex",
-    color: "#6bcbef",
+    color: "#6366f1",
     fontWeight: 500,
   },
 
@@ -220,17 +222,18 @@ const useStyles = makeStyles((theme) => ({
     textAlign: "center",
     alignSelf: "center",
     width: "110px",
-    backgroundColor: "#e1f3fb",
+    backgroundColor: "rgba(99,102,241,0.1)",
     margin: "10px",
     borderRadius: "10px",
-    boxShadow: "0 1px 1px #b3b3b3",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
   },
 
   dailyTimestampText: {
-    color: "#808888",
+    color: "#6366f1",
     padding: 8,
     alignSelf: "center",
     marginLeft: "0px",
+    fontWeight: 500,
   },
 
   ackIcons: {

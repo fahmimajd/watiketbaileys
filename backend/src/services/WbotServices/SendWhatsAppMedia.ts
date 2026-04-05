@@ -5,6 +5,7 @@ import Ticket from "../../models/Ticket";
 
 import formatBody from "../../helpers/Mustache";
 import { buildJidFromNumber } from "../../helpers/Jid";
+import { simulateTyping, randomDelay, waitForRateLimitSlot, recordSend } from "../../helpers/antiBan";
 
 interface Request {
   media: Express.Multer.File;
@@ -39,7 +40,13 @@ const SendWhatsAppMedia = async ({
       content = { document: data, mimetype, fileName: filename, caption: hasBody };
     }
 
+    await waitForRateLimitSlot();
+    if (!mimetype.startsWith("audio/")) {
+      await simulateTyping(wbot, jid);
+    }
+    await randomDelay();
     const sentMessage = await (wbot as any).sendMessage(jid, content);
+    recordSend();
 
     await ticket.update({ lastMessage: body || media.filename });
 

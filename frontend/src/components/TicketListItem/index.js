@@ -26,6 +26,10 @@ import toastError from "../../errors/toastError";
 const useStyles = makeStyles(theme => ({
 	ticket: {
 		position: "relative",
+		transition: "background-color 0.2s",
+		"&:hover": {
+			backgroundColor: "rgba(99,102,241,0.04)",
+		},
 	},
 
 	pendingTicket: {
@@ -105,7 +109,7 @@ const useStyles = makeStyles(theme => ({
 		marginRight: 5,
 		right: 5,
 		bottom: 5,
-		background: "#2576D2",
+		background: "#6366f1",
 		color: "#ffffff",
 		border: "1px solid #CCC",
 		padding: 1,

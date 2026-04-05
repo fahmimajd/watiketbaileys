@@ -5,6 +5,7 @@ import Ticket from "../../models/Ticket";
 
 import formatBody from "../../helpers/Mustache";
 import { buildJidFromNumber } from "../../helpers/Jid";
+import { simulateTyping, randomDelay, waitForRateLimitSlot, recordSend } from "../../helpers/antiBan";
 
 interface Request {
   body: string;
@@ -48,7 +49,12 @@ const SendWhatsAppMessage = async ({
         message: quotedContent
       };
     }
+
+    await waitForRateLimitSlot();
+    await simulateTyping(wbot, jid);
+    await randomDelay();
     const sentMessage: any = await (wbot as any).sendMessage(jid, { text }, { linkPreview: false, quoted });
+    recordSend();
 
     await ticket.update({ lastMessage: body });
     return sentMessage as any;

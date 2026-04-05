@@ -41,11 +41,11 @@ const Mp3Recorder = new MicRecorder({ bitRate: 128 });
 
 const useStyles = makeStyles((theme) => ({
   mainWrapper: {
-    background: "#eee",
+    background: theme.palette.background.paper,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+    borderTop: `1px solid ${theme.palette.divider}`,
     [theme.breakpoints.down("sm")]: {
       position: "fixed",
       bottom: 0,
@@ -54,7 +54,7 @@ const useStyles = makeStyles((theme) => ({
   },
 
   newMessageBox: {
-    background: "#eee",
+    background: theme.palette.background.paper,
     width: "100%",
     display: "flex",
     padding: "7px",
@@ -64,7 +64,7 @@ const useStyles = makeStyles((theme) => ({
   messageInputWrapper: {
     padding: 6,
     marginRight: 7,
-    background: "#fff",
+    background: theme.palette.mode === "dark" ? "#334155" : "#f8fafc",
     display: "flex",
     borderRadius: 20,
     flex: 1,
@@ -78,7 +78,7 @@ const useStyles = makeStyles((theme) => ({
   },
 
   sendMessageIcons: {
-    color: "grey",
+    color: theme.palette.text.secondary,
   },
 
   uploadInput: {
@@ -91,19 +91,19 @@ const useStyles = makeStyles((theme) => ({
     position: "relative",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#eee",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+    backgroundColor: theme.palette.background.paper,
+    borderTop: `1px solid ${theme.palette.divider}`,
   },
 
   emojiBox: {
     position: "absolute",
     bottom: 63,
     width: 40,
-    borderTop: "1px solid #e8e8e8",
+    borderTop: `1px solid ${theme.palette.divider}`,
   },
 
   circleLoading: {
-    color: green[500],
+    color: theme.palette.primary.main,
     opacity: "70%",
     position: "absolute",
     top: "20%",
@@ -112,7 +112,7 @@ const useStyles = makeStyles((theme) => ({
   },
 
   audioLoading: {
-    color: green[500],
+    color: theme.palette.primary.main,
     opacity: "70%",
   },
 
@@ -123,11 +123,11 @@ const useStyles = makeStyles((theme) => ({
   },
 
   cancelAudioIcon: {
-    color: "red",
+    color: "#ef4444",
   },
 
   sendAudioIcon: {
-    color: "green",
+    color: "#22c55e",
   },
 
   replyginMsgWrapper: {
@@ -144,8 +144,8 @@ const useStyles = makeStyles((theme) => ({
     flex: 1,
     marginRight: 5,
     overflowY: "hidden",
-    backgroundColor: "rgba(0, 0, 0, 0.05)",
-    borderRadius: "7.5px",
+    backgroundColor: "rgba(99,102,241,0.08)",
+    borderRadius: "10px",
     display: "flex",
     position: "relative",
   },
@@ -161,29 +161,31 @@ const useStyles = makeStyles((theme) => ({
   replyginContactMsgSideColor: {
     flex: "none",
     width: "4px",
-    backgroundColor: "#35cd96",
+    backgroundColor: "#22c55e",
   },
 
   replyginSelfMsgSideColor: {
     flex: "none",
     width: "4px",
-    backgroundColor: "#6bcbef",
+    backgroundColor: "#6366f1",
   },
 
   messageContactName: {
     display: "flex",
-    color: "#6bcbef",
+    color: "#6366f1",
     fontWeight: 500,
   },
   messageQuickAnswersWrapper: {
     margin: 0,
     position: "absolute",
     bottom: "50px",
-    background: "#ffffff",
+    background: theme.palette.background.paper,
     padding: "2px",
-    border: "1px solid #CCC",
+    border: `1px solid ${theme.palette.divider}`,
     left: 0,
     width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
     "& li": {
       listStyle: "none",
       "& a": {
@@ -193,7 +195,7 @@ const useStyles = makeStyles((theme) => ({
         overflow: "hidden",
         maxHeight: "32px",
         "&:hover": {
-          background: "#F1F1F1",
+          background: theme.palette.mode === "dark" ? "#334155" : "#f1f5f9",
           cursor: "pointer",
         },
       },

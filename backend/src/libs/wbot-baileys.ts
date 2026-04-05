@@ -13,9 +13,11 @@ import Whatsapp from "../models/Whatsapp";
 import { getIO } from "./socket";
 import { logger } from "../utils/logger";
 import wireBaileysMessageListeners from "../services/WbotServices/baileysMessageListener";
+import { getRandomBrowserFingerprint, getReconnectDelay } from "../helpers/antiBan";
 
 // Maintain sessions keyed by whatsapp.id, similar to the wweb adapter
 const sessions = new Map<number, WASocket>();
+const reconnectAttempts = new Map<number, number>();
 
 export type Session = WASocket & { id?: number };
 
@@ -46,7 +48,7 @@ export const initWbot = async (whatsapp: Whatsapp): Promise<Session> => {
       version,
       auth: state,
       printQRInTerminal: false,
-      browser: ["Whaticket", "Chrome", "1.0.0"],
+      browser: getRandomBrowserFingerprint(),
       connectTimeoutMs: 30000,
       syncFullHistory: false
     });
@@ -71,6 +73,7 @@ export const initWbot = async (whatsapp: Whatsapp): Promise<Session> => {
         }
 
         if (connection === "open") {
+          reconnectAttempts.delete(whatsapp.id);
           await whatsapp.update({ status: "CONNECTED", qrcode: "", retries: 0 });
           io.emit("whatsappSession", { action: "update", session: whatsapp });
         }
@@ -83,7 +86,12 @@ export const initWbot = async (whatsapp: Whatsapp): Promise<Session> => {
           io.emit("whatsappSession", { action: "update", session: whatsapp });
 
           if (shouldReconnect) {
-            setTimeout(() => initWbot(whatsapp).catch(err => logger.error(err)), 2000);
+            const attempts = reconnectAttempts.get(whatsapp.id) ?? 0;
+            const nextAttempt = attempts + 1;
+            reconnectAttempts.set(whatsapp.id, nextAttempt);
+            const delay = getReconnectDelay(attempts);
+            logger.info(`Reconnecting ${whatsapp.id} (attempt ${nextAttempt}) in ${delay}ms`);
+            setTimeout(() => initWbot(whatsapp).catch(err => logger.error(err)), delay);
           } else {
             sessions.delete(whatsapp.id);
           }

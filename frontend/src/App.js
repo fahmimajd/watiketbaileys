@@ -12,16 +12,42 @@ const App = () => {
     {
       scrollbarStyles: {
         "&::-webkit-scrollbar": {
-          width: "8px",
-          height: "8px",
+          width: "6px",
+          height: "6px",
         },
         "&::-webkit-scrollbar-thumb": {
-          boxShadow: "inset 0 0 6px rgba(0, 0, 0, 0.3)",
-          backgroundColor: "#e8e8e8",
+          backgroundColor: "#c1c1c1",
+          borderRadius: "10px",
+        },
+        "&::-webkit-scrollbar-track": {
+          backgroundColor: "transparent",
         },
       },
       palette: {
-        primary: { main: "#2576d2" },
+        primary: { main: "#6366f1" },
+        secondary: { main: "#8b5cf6" },
+        background: {
+          default: "#f1f5f9",
+          paper: "#ffffff",
+        },
+      },
+      typography: {
+        fontFamily: "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+      },
+      shape: {
+        borderRadius: 12,
+      },
+      overrides: {
+        MuiPaper: {
+          root: {
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)",
+          },
+        },
+        MuiTableCell: {
+          root: {
+            padding: "12px 16px",
+          },
+        },
       },
     },
     locale

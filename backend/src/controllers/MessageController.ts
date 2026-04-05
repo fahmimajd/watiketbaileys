@@ -10,6 +10,7 @@ import DeleteWhatsAppMessage from "../services/WbotServices/DeleteWhatsAppMessag
 import SendWhatsAppMedia from "../services/WbotServices/SendWhatsAppMedia";
 import SendWhatsAppMessage from "../services/WbotServices/SendWhatsAppMessage";
 import { SendReadReceiptService } from "../services/WbotServices/SendReadReceiptService";
+import { randomDelay } from "../helpers/antiBan";
 
 type IndexQuery = {
   pageNumber: string;
@@ -46,11 +47,10 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   SetTicketMessagesAsRead(ticket);
 
   if (medias) {
-    await Promise.all(
-      medias.map(async (media: Express.Multer.File) => {
-        await SendWhatsAppMedia({ media, ticket });
-      })
-    );
+    for (let i = 0; i < medias.length; i++) {
+      if (i > 0) await randomDelay();
+      await SendWhatsAppMedia({ media: medias[i], ticket });
+    }
   } else {
     await SendWhatsAppMessage({ body, ticket, quotedMsg });
   }

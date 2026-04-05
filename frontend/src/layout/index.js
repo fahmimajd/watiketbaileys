@@ -37,7 +37,7 @@ const useStyles = makeStyles((theme) => ({
     },
   },
   toolbar: {
-    paddingRight: 24, // keep right padding when drawer closed
+    paddingRight: 24,
   },
   toolbarIcon: {
     display: "flex",
@@ -52,7 +52,9 @@ const useStyles = makeStyles((theme) => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
-    backgroundColor: theme.palette.background.default,
+    backgroundColor: theme.palette.background.paper,
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
   },
   appBarShift: {
     marginLeft: drawerWidth,
@@ -72,6 +74,7 @@ const useStyles = makeStyles((theme) => ({
   title: {
     flexGrow: 1,
     color: theme.palette.text.primary,
+    fontWeight: 600,
   },
   drawerPaper: {
     position: "relative",
@@ -82,6 +85,7 @@ const useStyles = makeStyles((theme) => ({
       duration: theme.transitions.duration.enteringScreen,
     }),
     backgroundColor: theme.palette.background.paper,
+    borderRight: `1px solid ${theme.palette.divider}`,
   },
   drawerPaperClose: {
     overflowX: "hidden",
@@ -100,6 +104,7 @@ const useStyles = makeStyles((theme) => ({
   content: {
     flex: 1,
     overflow: "auto",
+    background: theme.palette.background.default,
   },
   container: {
     paddingTop: theme.spacing(4),
